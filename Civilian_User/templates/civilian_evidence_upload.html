@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Upload Evidence</title>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:#f8f9fb;}
+
+.mobile-app{
+max-width:390px;
+margin:auto;
+min-height:100vh;
+padding:15px;
+padding-bottom:120px;
+}
+
+.app-header{position:relative;margin-bottom:15px;}
+
+.app-icon{
+position:absolute;left:5px;top:50%;
+transform:translateY(-50%);
+width:32px;height:32px;background:#0d6efd;
+border-radius:8px;display:flex;align-items:center;
+justify-content:center;color:white;
+}
+
+.app-title{
+text-align:center;font-size:18px;font-weight:600;color:#0d6efd;
+}
+
+/* Complaint */
+.complaint-bar{
+display:flex;
+justify-content:space-between;
+background:white;
+padding:10px 12px;
+border-radius:12px;
+margin-bottom:10px;
+font-size:13px;
+box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+.complaint-number{
+color:#0d6efd;
+font-weight:600;
+}
+
+.upload-box{
+background:white;border:2px dashed #0d6efd;
+border-radius:15px;padding:20px;text-align:center;
+cursor:pointer;margin-bottom:10px;
+}
+
+.preview-container{display:flex;gap:8px;}
+
+.preview-item{position:relative;}
+
+.preview-img{
+width:90px;height:90px;border-radius:10px;object-fit:cover;
+}
+
+.delete-btn{
+position:absolute;top:-6px;left:-6px;
+background:red;color:white;width:20px;height:20px;
+border-radius:50%;display:flex;align-items:center;
+justify-content:center;font-size:10px;cursor:pointer;
+}
+
+.form-box{
+background:white;padding:15px;border-radius:15px;
+box-shadow:0 3px 10px rgba(0,0,0,0.05);
+}
+
+/* DROPDOWN */
+.dropdown{position:relative;margin-bottom:14px;}
+
+.dropdown-label{
+    font-size:12px;
+    color:#333;
+    margin-bottom:6px;   /* space between label and box */
+    display:block;
+}
+
+.dropdown-selected{
+padding:10px;border-radius:10px;
+border:1px solid #ccc;font-size:13px;
+cursor:pointer;background:white;
+}
+
+.dropdown-list{
+position:absolute;width:100%;
+background:white;border-radius:10px;
+box-shadow:0 3px 10px rgba(0,0,0,0.1);
+display:none;max-height:150px;overflow:auto;
+z-index:10;
+}
+
+.dropdown-list div{
+padding:8px;font-size:13px;cursor:pointer;
+}
+
+.dropdown-list div:hover{background:#f1f5ff;}
+
+.add-more{
+font-size:12px;
+color:#0d6efd;
+cursor:pointer;
+margin-bottom:10px;
+}
+
+/* INPUT */
+.input{
+width:100%;padding:10px;border-radius:10px;
+border:1px solid #ddd;font-size:13px;margin-bottom:10px;
+}
+
+.auto-box{
+background:white;padding:10px;border-radius:10px;
+font-size:12px;margin-bottom:10px;border:1px solid #eee;
+}
+
+.action-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+.submit-btn{
+width:100%;background:#0d6efd;color:white;
+border:none;padding:12px;border-radius:12px;font-size:14px;
+}
+
+/* NAVIGATION */
+.bottom-nav{
+position:fixed;bottom:20px;left:14px;right:14px;
+max-width:390px;margin:auto;background:white;
+display:flex;justify-content:space-between;
+padding:12px 18px;border-radius:22px;
+z-index:1000;
+box-shadow:0 -4px 12px rgba(0,0,0,0.08);
+}
+
+.nav-item{
+flex:1;text-align:center;font-size:10px;
+color:#666;padding:8px;border-radius:12px;cursor:pointer;
+}
+
+.nav-item.active{background:#0d6efd;color:white;}
+.nav-item i{display:block;font-size:16px;}
+.hide-nav{transform:translateY(120%);}
+.datetime-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.dt-left{
+    font-size:12px;
+    color:#666;
+}
+
+.dt-right{
+    text-align:right;
+    font-size:12px;
+    font-weight:400;
+    color:#333;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="mobile-app">
+
+<form method="POST" enctype="multipart/form-data">
+{% csrf_token %}
+
+<div class="app-header">
+<div class="app-icon"><i class="fa-solid fa-camera"></i></div>
+<div class="app-title">Upload Evidence</div>
+</div>
+
+<div class="upload-box" onclick="openCamera()">
+<i class="fa-solid fa-camera fa-2x"></i>
+<p>Capture Evidence (Max 3)</p>
+<input type="file" id="cameraInput" name="images" accept="image/*" capture="environment" multiple hidden>
+</div>
+
+<div class="preview-container" id="previewContainer"></div>
+
+<div class="form-box">
+
+{% if messages %}
+{% for message in messages %} <div style="color:red; text-align:center;">
+{{ message }} </div>
+{% endfor %}
+{% endif %}
+
+<div class="complaint-bar">
+    <div>Complaint No.</div>
+    <div class="complaint-number" id="complaintNo">
+        {{ complaint_number }}
+    </div>
+
+    <input type="hidden" name="complaint_no" id="complaintInput"
+           value="{{ complaint_number }}">
+</div>
+
+<div id="dropdownContainer"></div>
+
+<input type="hidden" name="violations" id="violationsInput">
+
+<div class="action-row">
+    <div class="add-more" onclick="addDropdown()">+ Add More</div>
+</div>
+
+<div class="auto-box">
+
+Address: <input id="address" name="address" class="input" placeholder="Enter address">
+
+City: <input id="city" name="city" class="input" placeholder="Enter city">
+
+State: <input id="state" name="state" class="input" placeholder="Enter state">
+
+Pincode: <input id="pincode" name="pincode" class="input" inputmode="numeric" placeholder="Enter pincode">
+
+Country: <input id="country" name="country" class="input" placeholder="Enter country">
+
+</div>
+
+<div class="auto-box datetime-row">
+    <div class="dt-left">
+        <div>Date</div>
+        <div>Time</div>
+    </div>
+
+    <div class="dt-right">
+        <div id="date"></div>
+        <div id="time"></div>
+    </div>
+
+    <input type="hidden" name="datetime" id="datetimeInput">
+</div>
+<input class="input" name="vehicle_number" placeholder="Vehicle Number (Optional)">
+<textarea class="input" name="description" placeholder="Description"></textarea>
+
+<button type="submit" class="submit-btn" onclick="prepareData()">Submit Evidence</button>
+
+</div>
+
+</form>
+
+</div>
+
+<!-- ✅ NAVIGATION (RESTORED EXACTLY) -->
+
+<div class="bottom-nav" id="bottomNav">
+
+<div class="nav-item" onclick="goPage(this,'/Civilian_Dashboard/')">
+<i class="fa-solid fa-chart-line"></i>
+Dashboard
+</div>
+
+<div class="nav-item active" onclick="goPage(this,'/Civilian_Evidence_Upload/')">
+<i class="fa-solid fa-upload"></i>
+Upload
+</div>
+
+<div class="nav-item" onclick="goPage(this,'/Civilian_Evidence_History/')">
+<i class="fa-solid fa-gift"></i>
+Reward
+</div>
+
+<div class="nav-item" onclick="goPage(this,'/Civilian_Profile_Management/')">
+<i class="fa-solid fa-circle-user"></i>
+Profile
+</div>
+
+</div>
+
+
+<script>
+
+function getLocation(){
+
+    if(!navigator.geolocation){
+        alert("Geolocation not supported");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async function(position){
+
+        let lat = position.coords.latitude;
+        let lon = position.coords.longitude;
+
+        try{
+
+            let res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+            let data = await res.json();
+
+            let addr = data.address || {};
+
+            let addressValue =
+                addr.neighbourhood ||
+                addr.suburb ||
+                addr.residential ||
+                addr.road ||
+                "";
+
+            if(!addressValue && data.display_name){
+                addressValue = data.display_name.split(",")[0];
+            }
+
+            document.getElementById("address").value = addressValue;
+
+            // 🔥 CITY CLEANING FIX
+            let rawCity =
+                addr.city ||
+                addr.town ||
+                addr.village ||
+                addr.county ||
+                addr.state_district ||
+                addr.municipality ||
+                "";
+
+            let cleanCity = rawCity
+                .replace(/Taluka|District/gi, "")   // remove unwanted words
+                .trim();
+
+            // if multiple words → take first (Rajkot West → Rajkot)
+            if(cleanCity.includes(" ")){
+                cleanCity = cleanCity.split(" ")[0];
+            }
+
+            document.getElementById("city").value = cleanCity;
+
+            document.getElementById("state").value =
+                addr.state || "";
+
+            document.getElementById("pincode").value =
+                addr.postcode || "";
+
+            document.getElementById("country").value =
+                addr.country || "";
+
+        }catch(err){
+            console.log("Location error:", err);
+        }
+
+    }, function(error){
+        console.log("GPS Error:", error);
+    });
+}
+
+getLocation();
+
+let count = 0;
+let selectedViolations = [];
+
+const allOptions = [
+    "Helmet Violation",
+    "Signal Jump",
+    "Wrong Parking",
+    "Over Speeding",
+    "No Seatbelt",
+    "Mobile Usage",
+    "Illegal U-Turn",
+    "Drunk Driving"
+];
+
+function addDropdown(isDefault=false){
+
+    let all = document.querySelectorAll(".dropdown-selected");
+
+    // ✅ Only block if user is trying to spam without selecting anything
+    if(all.length > 0){
+        let last = all[all.length - 1];
+
+        if(last.innerText === "Select Violation" && !isDefault){
+            // ❌ silently stop (no alert)
+            return;
+        }
+    }
+
+    if(selectedViolations.length >= allOptions.length){
+        return;
+    }
+
+    count++;
+    let id = "dd"+count;
+
+    let html=`
+    <div class="dropdown" id="${id}">
+        ${count === 1 ? `<div class="dropdown-label">Select Violation</div>` : ``}
+        <div class="dropdown-selected" onclick="toggleDropdown(this)">Select Violation</div>
+        <div class="dropdown-list"></div>
+    </div>
+    `;
+
+    // 🔥 IMPORTANT FIX
+    document.getElementById("dropdownContainer").insertAdjacentHTML("beforeend", html);
+
+    updateDeleteButtons();
+    updateAddMoreButton();
+}
+
+addDropdown(true);
+updateDeleteButtons();
+updateAddMoreButton();
+
+function toggleDropdown(el){
+
+    // 🔥 close all other dropdowns first
+    document.querySelectorAll(".dropdown-list").forEach(d=>{
+        d.style.display = "none";
+    });
+
+    let list = el.nextElementSibling;
+
+    let optionsHTML = "";
+
+    allOptions.forEach(opt=>{
+        if(!selectedViolations.includes(opt)){
+            optionsHTML += `<div onclick="selectOption(this)">${opt}</div>`;
+        }
+    });
+
+    list.innerHTML = optionsHTML;
+
+    // 🔥 always open (no toggle confusion)
+    list.style.display = "block";
+}
+
+document.addEventListener("click", function(e){
+    if(!e.target.closest(".dropdown")){
+        document.querySelectorAll(".dropdown-list").forEach(d=>{
+            d.style.display = "none";
+        });
+    }
+});
+
+// ✅ Select option (no duplicate)
+function selectOption(el){
+
+    let selectedText = el.innerText;
+    let box = el.parentElement.previousElementSibling;
+
+    let oldValue = box.innerText;
+
+    if(oldValue !== "Select Violation"){
+        selectedViolations = selectedViolations.filter(v => v !== oldValue);
+    }
+
+    box.innerText = selectedText;
+    selectedViolations.push(selectedText);
+
+    el.parentElement.style.display="none";
+
+    updateAddMoreButton();
+}
+
+// ✅ Delete only last
+function removeLastDropdown(){
+
+    let all = document.querySelectorAll(".dropdown");
+
+    if(all.length <= 1){
+        alert("First violation cannot be deleted");
+        return;
+    }
+
+    let last = all[all.length - 1];
+
+    let selected = last.querySelector(".dropdown-selected").innerText;
+
+    if(selected !== "Select Violation"){
+        selectedViolations = selectedViolations.filter(v => v !== selected);
+    }
+
+    last.remove();
+
+    updateDeleteButtons();
+    updateAddMoreButton();
+}
+
+// ✅ Only last has delete button
+function updateDeleteButtons(){
+
+    let row = document.querySelector(".action-row");
+
+    // remove old delete
+    let old = document.querySelector(".delete-dd");
+    if(old) old.remove();
+
+    let all = document.querySelectorAll(".dropdown");
+
+    if(all.length > 1){
+
+        let btn = document.createElement("div");
+        btn.innerText = "Delete";
+        btn.className = "delete-dd";
+        btn.style = "font-size:12px;color:red;cursor:pointer;";
+        btn.onclick = removeLastDropdown;
+
+        row.appendChild(btn);  // ✅ CORRECT PLACE
+    }
+}
+
+// ✅ Hide Add More when full
+function updateAddMoreButton(){
+
+    let btn = document.querySelector(".add-more");
+
+    if(selectedViolations.length >= allOptions.length){
+        btn.style.display = "none";
+    } else {
+        btn.style.display = "block";
+    }
+}
+
+
+let images=[];
+
+function openCamera(){
+if(images.length>=3){
+    return; // ❌ no alert, just stop
+}
+cameraInput.click();
+}
+
+
+cameraInput.onchange = (e) => {
+
+    let files = e.target.files;
+
+    for(let i = 0; i < files.length; i++){
+        if(images.length < 3){
+            images.push(files[i]);
+        }
+    }
+
+    renderImages();
+
+    const dataTransfer = new DataTransfer();
+
+    images.forEach(file => {
+        dataTransfer.items.add(file);
+    });
+
+    cameraInput.files = dataTransfer.files;
+};
+
+function renderImages(){
+
+    previewContainer.innerHTML="";
+
+    images.forEach((file,i)=>{
+        let reader=new FileReader();
+        reader.onload=e=>{
+            previewContainer.innerHTML+=`
+            <div class="preview-item">
+            <img src="${e.target.result}" class="preview-img">
+            <div class="delete-btn" onclick="removeImage(${i})">×</div>
+            </div>`;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // 🔥 FIX: control upload button visibility
+    let uploadBox = document.querySelector(".upload-box");
+
+    if(images.length >= 3){
+        uploadBox.style.display = "none";
+    }else{
+        uploadBox.style.display = "block";
+    }
+}
+
+function removeImage(i){
+    images.splice(i,1);
+
+    const dataTransfer = new DataTransfer();
+
+    images.forEach(file => {
+        dataTransfer.items.add(file);
+    });
+
+    cameraInput.files = dataTransfer.files;
+
+    renderImages();
+}
+
+let now = new Date();
+
+// right side display
+let date =
+    now.getFullYear() + "-" +
+    String(now.getMonth()+1).padStart(2,'0') + "-" +
+    String(now.getDate()).padStart(2,'0');
+
+let time =
+    String(now.getHours()).padStart(2,'0') + ":" +
+    String(now.getMinutes()).padStart(2,'0');
+
+document.getElementById("date").innerText = date;
+document.getElementById("time").innerText = time;
+
+// backend value (unchanged format)
+document.getElementById("datetimeInput").value = date + " " + time;
+
+function prepareData(){
+document.getElementById("complaintInput").value =
+document.getElementById("complaintNo").innerText;
+
+let violations = [];
+document.querySelectorAll(".dropdown-selected").forEach(el=>{
+if(el.innerText !== "Select Violation"){
+violations.push(el.innerText);
+}
+});
+
+document.getElementById("violationsInput").value = violations.join(",");
+}
+
+/* NAVIGATION JS */
+
+function goPage(el,page){
+document.querySelectorAll(".nav-item").forEach(i=>i.classList.remove("active"));
+el.classList.add("active");
+window.location.href=page;
+}
+
+let lastScroll=0;
+window.addEventListener("scroll",()=>{
+let cur=window.pageYOffset;
+if(cur>lastScroll){
+bottomNav.classList.add("hide-nav");
+}else{
+bottomNav.classList.remove("hide-nav");
+}
+lastScroll=cur;
+});
+
+</script>
+
+</body>
+</html>

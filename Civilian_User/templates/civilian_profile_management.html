@@ -1,0 +1,270 @@
+<!DOCTYPE html> 
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title> Profile Management</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Segoe UI',sans-serif;
+}
+
+body{
+background:linear-gradient(180deg,#e3f2fd,#ffffff);
+}
+
+.mobile-app{
+max-width:390px;
+margin:auto;
+min-height:100vh;
+padding:15px;
+padding-bottom:120px;
+}
+
+/* Header */
+
+.app-header{
+position:relative;
+margin-bottom:20px;
+}
+
+.app-icon{
+position:absolute;
+left:5px;
+top:50%;
+transform:translateY(-50%);
+width:32px;
+height:32px;
+background:#0d6efd;
+border-radius:8px;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-size:14px;
+box-shadow:0 3px 8px rgba(0,0,0,0.1);
+}
+
+.app-title{
+text-align:center;
+font-size:18px;
+font-weight:600;
+color:#0d6efd;
+padding:6px 0;
+}
+
+/* Profile */
+
+.profile-card{
+background:white;
+padding:20px;
+border-radius:20px;
+box-shadow:0 5px 20px rgba(0,0,0,0.05);
+text-align:center;
+}
+
+.profile-img{
+width:90px;
+height:90px;
+border-radius:50%;
+background:#e3f2fd;
+margin:auto;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:30px;
+color:#0d6efd;
+margin-bottom:10px;
+overflow:hidden;
+}
+
+.profile-name{
+font-weight:600;
+font-size:16px;
+}
+
+.profile-email{
+font-size:13px;
+color:gray;
+margin-bottom:15px;
+}
+
+.profile-btn{
+width:100%;
+border-radius:12px;
+margin-bottom:8px;
+}
+
+/* Bottom Navigation */
+
+.bottom-nav{
+position:fixed;
+bottom:20px;
+left:14px;
+right:14px;
+max-width:390px;
+margin:auto;
+background:white;
+display:flex;
+justify-content:space-between;
+padding:12px 18px;
+border-radius:22px;
+transition:0.3s;
+z-index:1000;
+
+box-shadow:
+0 -4px 12px rgba(0,0,0,0.08),
+0 10px 25px rgba(0,0,0,0.15),
+-6px 0 15px rgba(13,110,253,0.08),
+6px 0 15px rgba(13,110,253,0.08);
+}
+
+.nav-item{
+flex:1;
+text-align:center;
+font-size:10px;
+color:#666;
+padding:8px 4px;
+border-radius:12px;
+cursor:pointer;
+transition:0.3s;
+margin:0 3px;
+}
+
+.nav-item i{
+display:block;
+font-size:17px;
+margin-bottom:2px;
+}
+
+.nav-item.active{
+background:#0d6efd;
+color:white;
+padding:8px 6px;
+}
+
+.hide-nav{
+transform:translateY(120%);
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="mobile-app">
+
+<div class="app-header">
+
+<div class="app-icon">
+<i class="fa-solid fa-traffic-light"></i>
+</div>
+
+<div class="app-title">
+Profile Management
+</div>
+
+</div>
+
+<!-- Profile -->
+
+<div class="profile-card">
+
+<div class="profile-img">
+
+{% if auth and auth.profile_image %} <img src="{{ auth.profile_image.url }}" 
+      style="width:100%; height:100%; border-radius:50%; object-fit:cover;">
+{% else %} <i class="fa-solid fa-user"></i>
+{% endif %}
+
+</div>
+
+<div class="profile-name">
+{{ auth.full_name|default:"Civilian User" }}
+</div>
+
+<div class="profile-email">
+{{ auth.mobile_number|default:"No Mobile Number" }}
+</div>
+
+<button class="btn btn-primary profile-btn"
+   onclick="goPage(this,'/Civilian_Profile_Update/')">
+Edit Profile </button>
+
+<form method="post" action="{% url 'Logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-danger profile-btn">
+        Logout
+    </button>
+</form>
+
+</div>
+
+</div>
+
+<!-- NAV -->
+
+<div class="bottom-nav" id="bottomNav">
+
+<div class="nav-item " onclick="goPage(this,'/Civilian_Dashboard/')">
+<i class="fa-solid fa-chart-line"></i>
+Dashboard
+</div>
+
+<div class="nav-item" onclick="goPage(this,'/Civilian_Evidence_Upload/')">
+<i class="fa-solid fa-upload"></i>
+Upload
+</div>
+
+<div class="nav-item" onclick="goPage(this,'/Civilian_Evidence_History/')">
+<i class="fa-solid fa-gift"></i>
+Reward
+</div>
+
+<div class="nav-item active" onclick="goPage(this,'/Civilian_Profile_Management/')">
+<i class="fa-solid fa-circle-user"></i>
+Profile
+</div>
+
+</div>
+
+<script>
+
+let lastScroll = 0;
+const bottomNav = document.getElementById("bottomNav");
+
+window.addEventListener("scroll", function(){
+let currentScroll = window.pageYOffset;
+
+if(currentScroll > lastScroll){
+bottomNav.classList.add("hide-nav");
+}else{
+bottomNav.classList.remove("hide-nav");
+}
+
+lastScroll = currentScroll;
+});
+
+function goPage(el, page){
+document.querySelectorAll(".nav-item").forEach(item=>{
+item.classList.remove("active");
+});
+el.classList.add("active");
+window.location.href = page;
+}
+
+</script>
+
+</body>
+</html>

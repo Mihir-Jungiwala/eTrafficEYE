@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Profile Update</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet"/>
+
+<style>
+a, a:hover, a:focus {
+text-decoration: none !important;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:linear-gradient(180deg,#e3f2fd,#ffffff);margin:0;}
+.mobile-app{width:100%;max-width:390px;margin:auto;min-height:100vh;padding:18px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;}
+.mobile-app::-webkit-scrollbar{display:none;}
+.app-header{text-align:center;margin-bottom:15px;}
+.app-icon{width:60px;height:60px;background:#0d6efd;border-radius:18px;display:flex;align-items:center;justify-content:center;margin:auto;color:white;font-size:24px;margin-bottom:8px;box-shadow:0 6px 15px rgba(13,110,253,0.25);}
+.app-title{font-size:19px;font-weight:600;color:#0d6efd;}
+.app-subtitle{font-size:12px;color:gray;}
+.register-card{background:white;padding:16px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.05);}
+.profile-upload{text-align:center;margin-bottom:12px;}
+.upload-circle{width:85px;height:85px;border-radius:50%;background:#f1f5ff;border:2px dashed #0d6efd;display:flex;align-items:center;justify-content:center;margin:auto;cursor:pointer;overflow:hidden;}
+.upload-circle img{width:100%;height:100%;object-fit:cover;display:none;}
+.upload-icon{font-size:22px;color:#0d6efd;}
+.upload-text{font-size:12px;color:#0d6efd;margin-top:5px;cursor:pointer;}
+.remove-text{font-size:12px;color:red;margin-top:5px;cursor:pointer;display:none;}
+.form-control{height:40px;border-radius:12px;font-size:14px;}
+.custom-select{position:relative;margin-bottom:10px;}
+.select-box{height:40px;border-radius:12px;border:1px solid #ccc;padding:8px 12px;font-size:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;}
+.options{position:absolute;top:45px;left:0;right:0;background:white;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.1);display:none;z-index:10;}
+.option{padding:10px;cursor:pointer;}
+.option:hover{background:#f1f5ff;}
+.section-title{font-size:13px;font-weight:600;color:#0d6efd;margin-top:12px;margin-bottom:6px;}
+.btn-register{
+height:44px;
+border-radius:12px;
+background:#0d6efd !important;
+color:white !important;
+border:none;
+}
+
+.btn-register:hover,
+.btn-register:focus,
+.btn-register:active{
+background:#0d6efd !important;
+color:white !important;
+box-shadow:none !important;
+outline:none !important;
+}
+.btn-delete{
+display:flex;            
+align-items:center;        
+justify-content:center;    
+height:44px;
+border-radius:12px;
+background:#dc3545;
+color:white;
+text-decoration:none;
+}
+
+/* REMOVE DARK OVERLAY FROM CROPPER */
+.cropper-drag-box {
+    background-color: transparent !important;
+}
+
+.cropper-modal {
+    background-color: transparent !important;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="mobile-app">
+
+<div class="app-header">
+<div class="app-icon">
+<i class="fa-solid fa-user-shield"></i>
+</div>
+
+<div class="app-title">Masteradmin Update</div>
+<div class="app-subtitle">Manage Admin Profile</div>
+</div>
+
+<div class="register-card">
+
+<form method="POST" enctype="multipart/form-data">
+{% csrf_token %}
+
+<input type="hidden" name="remove_profile_image" id="removeProfileInput" value="false">
+
+<div class="profile-upload">
+<label for="profileInput">
+<div class="upload-circle">
+
+{% if auth.profile_image %} <img id="preview" src="{{ auth.profile_image.url }}?{{ now|date:'U' }}" style="display:block;"> <i class="fa-solid fa-plus upload-icon" id="uploadIcon" style="display:none;"></i>
+{% else %} <i class="fa-solid fa-plus upload-icon" id="uploadIcon"></i> <img id="preview">
+{% endif %}
+
+</div>
+</label>
+
+<input type="file" name="profile_image" id="profileInput" hidden 
+accept="image/*" capture="user">
+
+<div class="upload-text" id="uploadText"
+{% if auth.profile_image %} style="display:none;" {% endif %}>
+Upload Image
+</div>
+
+<div class="remove-text" id="removeText" onclick="removeImage()"
+{% if auth.profile_image %} style="display:block;" {% endif %}>
+Remove Image
+</div>
+</div>
+
+{% if messages %}
+{% for message in messages %} <div style="color:red; text-align:center;">
+{{ message }} </div>
+{% endfor %}
+{% endif %}
+
+<div class="section-title">Personal Information</div>
+
+<input type="text" class="form-control mb-2" name="full_name"
+value="{{ auth.full_name }}" placeholder="Full Name">
+
+<input type="text" class="form-control mb-2" name="username"
+value="{{ user.username }}" placeholder="Username">
+
+<input type="text"
+    class="form-control mb-2"
+    name="mobile_number"
+    value="{{ auth.mobile_number }}"
+    placeholder="Mobile Number"
+    maxlength="10"
+    inputmode="numeric"
+    onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+    required>
+
+<input type="email" class="form-control mb-2" name="email"
+value="{{ user.email }}" placeholder="Email ID">
+
+
+<div class="section-title">Security Details</div>
+
+<div style="position:relative;">
+<input type="password" class="form-control mb-2" id="password" name="password" placeholder="Password">
+<i class="fa fa-eye" onclick="togglePassword('password', this)"
+style="position:absolute; right:12px; top:10px; cursor:pointer;"></i>
+</div>
+
+<div style="position:relative;">
+<input type="password" class="form-control mb-2" id="confirm_password" name="confirm_password" placeholder="Confirm Password">
+<i class="fa fa-eye" onclick="togglePassword('confirm_password', this)"
+style="position:absolute; right:12px; top:10px; cursor:pointer;"></i>
+</div>
+<div style="font-size:11px; color:#6c757d; margin-top:8px; margin-bottom:10px;">
+Password must be at least 8 characters long.<br>
+Include uppercase, lowercase, a number, and a special character.<br>
+New password must be different from your previous password.
+</div>
+
+
+<div class="d-grid mt-3">
+<button class="btn btn-register">Update Profile</button>
+</div>
+
+
+</form>
+
+
+</div>
+
+</div>
+
+<!-- CROP MODAL (UNCHANGED) -->
+
+<div id="cropModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;display:none;z-index:9999;padding:15px;">
+
+<div style="display:flex; justify-content:flex-end;">
+<span onclick="closeCrop()" style="font-size:22px; cursor:pointer;">✕</span>
+</div>
+
+<div style="width:100%; height:75vh;">
+<img id="cropImage" style="max-width:100%;">
+</div>
+
+<div style="text-align:center; margin-top:-10px;">
+<button onclick="applyCrop()" class="btn btn-primary">Save Image</button>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<script>
+
+let cropper;
+
+const input = document.getElementById("profileInput");
+const preview = document.getElementById("preview");
+const uploadIcon = document.getElementById("uploadIcon");
+const uploadText = document.getElementById("uploadText");
+const removeText = document.getElementById("removeText");
+
+const modal = document.getElementById("cropModal");
+const cropImage = document.getElementById("cropImage");
+
+input.addEventListener("change", function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const url = URL.createObjectURL(file);
+
+    cropImage.src = url;
+    modal.style.display = "block";
+
+    setTimeout(()=>{
+        cropper = new Cropper(cropImage,{
+            aspectRatio:1,
+            viewMode:1,
+            autoCropArea:1,
+            background:false
+        });
+    },100);
+});
+
+function applyCrop(){
+    const canvas = cropper.getCroppedCanvas({width:300,height:300});
+
+    canvas.toBlob(function(blob){
+
+        // ✅ Convert to real file
+        const file = new File([blob], "profile.jpg", { type: "image/jpeg" });
+
+        // ✅ Put file back into input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        input.files = dataTransfer.files;
+
+        // ✅ Preview
+        const url = URL.createObjectURL(blob);
+        preview.src = url;
+        preview.style.display = "block";
+        uploadIcon.style.display = "none";
+
+        uploadText.style.display = "none";
+        removeText.style.display = "block";
+
+    }, "image/jpeg");
+
+    closeCrop();
+}
+
+function closeCrop(){
+    modal.style.display = "none";
+    if(cropper){cropper.destroy();cropper=null;}
+
+    // ❌ IMPORTANT: removed input.value="" (this was deleting file)
+}
+
+function removeImage(){
+    preview.src="";
+    preview.style.display="none";
+    uploadIcon.style.display="block";
+    uploadText.style.display="block";
+    removeText.style.display="none";
+
+    input.value = "";
+
+    // 🔥 THIS LINE FIXES YOUR BACKEND SYNC
+    document.getElementById("removeProfileInput").value = "true";
+}
+
+function toggleDropdown(el){
+    let options = el.nextElementSibling
+    options.style.display = options.style.display === "block" ? "none" : "block"
+}
+
+function selectOption(el){
+    let parent = el.closest(".custom-select")
+    parent.querySelector(".selected").innerText = el.innerText
+    parent.querySelector(".options").style.display = "none"
+
+    if(el.innerText === "Active" || el.innerText === "Inactive"){
+        document.getElementById("statusInput").value = el.innerText
+    }else{
+        document.getElementById("idType").value = el.innerText
+    }
+}
+
+
+
+document.addEventListener("click", function(e){
+    document.querySelectorAll(".options").forEach(opt=>{
+        if(!opt.parentElement.contains(e.target)){
+            opt.style.display="none"
+        }
+    })
+})
+
+function togglePassword(id, icon){
+    const input = document.getElementById(id);
+
+    if(input.type === "password"){
+        input.type = "text";
+        icon.classList.replace("fa-eye","fa-eye-slash");
+    }else{
+        input.type = "password";
+        icon.classList.replace("fa-eye-slash","fa-eye");
+    }
+}
+
+</script>
+
+
+</body>
+</html>
