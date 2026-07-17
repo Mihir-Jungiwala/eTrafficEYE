@@ -1,9 +1,9 @@
 import os
 import uuid
 
-from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
+from django.db import models
 
 
 def unique_upload_path(folder):
@@ -28,7 +28,6 @@ class Evidence(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     complaint_no = models.CharField(max_length=50, unique=True)
-
     complaint_seq = models.IntegerField(unique=True)
 
     address = models.CharField(max_length=255)
@@ -67,23 +66,27 @@ class Evidence(models.Model):
     def __str__(self):
         return self.complaint_no
 
-    # DELETE IMAGES WHEN OBJECT DELETED
+    # Delete images when object is deleted
     def delete(self, *args, **kwargs):
         if self.image1:
             self.image1.delete(save=False)
+
         if self.image2:
             self.image2.delete(save=False)
+
         if self.image3:
             self.image3.delete(save=False)
+
         super().delete(*args, **kwargs)
 
-    # DELETE OLD IMAGE WHEN UPDATED
+    # Delete old images when replaced
     def save(self, *args, **kwargs):
 
         if self.pk:
             old = Evidence.objects.filter(pk=self.pk).first()
 
             if old:
+
                 if old.image1 and old.image1 != self.image1:
                     old.image1.delete(save=False)
 

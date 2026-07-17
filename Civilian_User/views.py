@@ -157,7 +157,6 @@ def Civilian_Evidence_Upload(request):
         print("GLOBAL ERROR:", e)
         return redirect('Error_Page')
 
-
 @login_required
 def Civilian_Evidence_History(request):
 

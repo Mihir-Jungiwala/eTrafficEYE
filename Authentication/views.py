@@ -61,7 +61,6 @@ def Login(request):
         print("LOGIN ERROR:", e)
         return redirect('Error_Page')   
 
-
 @login_required
 def Masteradmin_Profile_Update(request):
 
@@ -159,33 +158,40 @@ def Masteradmin_Profile_Update(request):
             elif password or confirm_password:
                 messages.error(request, "Please fill both password fields")
                 return redirect(redirect_url)
-
             try:
 
-                user.username = username
-                user.email = email
+                # Store old image before making any changes
+                old_profile_image = auth.profile_image.name if auth.profile_image else None
 
-                if password:
-                    user.set_password(password)
+                with transaction.atomic():
 
-                user.save()
+                    user.username = username
+                    user.email = email
 
-                auth.full_name = full_name
-                auth.mobile_number = mobile_number
+                    if password:
+                        user.set_password(password)
 
-                # CASE 1: Replace image
-                if profile_image:
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
-                    auth.profile_image = profile_image
+                    user.save()
 
-                # CASE 2: Remove image
-                elif request.POST.get("remove_profile_image") == "true":
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
+                    auth.full_name = full_name
+                    auth.mobile_number = mobile_number
+
+                    # CASE 1: Replace image
+                    if profile_image:
+                        auth.profile_image = profile_image
+
+                    # CASE 2: Remove image
+                    elif request.POST.get("remove_profile_image") == "true":
                         auth.profile_image = None
 
-                auth.save()
+                    auth.save()
+
+                # Delete old image ONLY after successful transaction
+                if profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
+
+                if request.POST.get("remove_profile_image") == "true" and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
 
                 if password:
                     logout(request)
@@ -209,7 +215,6 @@ def Masteradmin_Profile_Update(request):
         print("GLOBAL ERROR:", e)
         return redirect('Error_Page')
 
-
 @login_required
 def Masteradmin_Civilian_Profile_Registration(request):
 
@@ -226,9 +231,9 @@ def Masteradmin_Civilian_Profile_Registration(request):
             mobile_number = request.POST.get('mobile_number', '').strip()
             civilian_id_card_name = request.POST.get('civilian_id_card_name', '')
 
-            profile_image = request.FILES.get('profile_image')   
+            profile_image = request.FILES.get('profile_image')
             id_image_front = request.FILES.get('id_image_front')
-            id_image_back = request.FILES.get('id_image_back')   
+            id_image_back = request.FILES.get('id_image_back')
 
             if not username:
                 messages.error(request, "Username is required")
@@ -297,27 +302,27 @@ def Masteradmin_Civilian_Profile_Registration(request):
             if not re.fullmatch(r'[A-Za-z ]{2,50}', full_name):
                 messages.error(request, "Full name must contain only letters and spaces")
                 return redirect('Masteradmin_Civilian_Profile_Registration')
-
             try:
-       
-                user = User.objects.create_user(
-                    username=username,
-                    password=password,
-                    email=email
-                )
 
-               
-                Authentication.objects.create(
-                    user=user,
-                    role='Civilian',
-                    full_name=full_name,
-                    mobile_number=mobile_number,
-                    profile_image=profile_image,
-                    civilian_id_card_name=civilian_id_card_name,
-                    id_image_front=id_image_front,
-                    id_image_back=id_image_back,
-                    status=True
-                )
+                with transaction.atomic():
+
+                    user = User.objects.create_user(
+                        username=username,
+                        password=password,
+                        email=email
+                    )
+
+                    Authentication.objects.create(
+                        user=user,
+                        role='Civilian',
+                        full_name=full_name,
+                        mobile_number=mobile_number,
+                        profile_image=profile_image,
+                        civilian_id_card_name=civilian_id_card_name,
+                        id_image_front=id_image_front,
+                        id_image_back=id_image_back,
+                        status=True
+                    )
 
                 messages.success(request, "Registration successful. Please login.")
                 return redirect('Masteradmin_Civilian_User')
@@ -332,7 +337,6 @@ def Masteradmin_Civilian_Profile_Registration(request):
     except Exception as e:
         print("GLOBAL ERROR:", e)
         return redirect('Error_Page')
-
 
 @login_required
 def Masteradmin_Civilian_Profile_Update(request, id):
@@ -415,49 +419,58 @@ def Masteradmin_Civilian_Profile_Update(request, id):
                     messages.error(request, "Passwords do not match")
                     return back()
 
-
                 pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$'
 
                 if not re.match(pattern, password):
                     messages.error(
                         request,
                         "Password must be at least 8 characters long, include uppercase, lowercase, a number, and a special character."
-                        )
+                    )
                     return back()
 
                 if user.check_password(password):
                     messages.error(request, "New password cannot be same as old password")
                     return back()
-
-                user.set_password(password)
-
             try:
 
-                user.username = username
-                user.email = email
-                user.save()
+                old_profile_image = auth.profile_image.name if auth.profile_image else None
+                remove_profile_image = request.POST.get("remove_profile_image") == "true"
 
-                auth.full_name = full_name
-                auth.mobile_number = mobile_number
+                with transaction.atomic():
 
-                if status == "Active":
-                    auth.status = True
-                elif status == "Inactive":
-                    auth.status = False
+                    user.username = username
+                    user.email = email
 
-                # CASE 1: Replace image
-                if profile_image:
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
-                    auth.profile_image = profile_image
+                    if password:
+                        user.set_password(password)
 
-                # CASE 2: Remove image
-                elif request.POST.get("remove_profile_image") == "true":
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
+                    user.save()
+
+                    auth.full_name = full_name
+                    auth.mobile_number = mobile_number
+
+                    if status == "Active":
+                        auth.status = True
+                    elif status == "Inactive":
+                        auth.status = False
+
+                    # CASE 1: Replace image
+                    if profile_image:
+                        auth.profile_image = profile_image
+
+                    # CASE 2: Remove image
+                    elif remove_profile_image:
                         auth.profile_image = None
 
-                auth.save()
+                    auth.save()
+
+                # Delete old image only after successful transaction
+                if profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
+
+                # Delete old image if removed
+                elif remove_profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
 
                 if password:
                     messages.success(request, "Password updated successfully")
@@ -479,7 +492,6 @@ def Masteradmin_Civilian_Profile_Update(request, id):
         print("GLOBAL ERROR:", e)
         return redirect('Error_Page')
 
-
 def Civilian_Profile_Registration(request):
 
     try:
@@ -495,9 +507,9 @@ def Civilian_Profile_Registration(request):
             mobile_number = request.POST.get('mobile_number', '').strip()
             civilian_id_card_name = request.POST.get('civilian_id_card_name', '')
 
-            profile_image = request.FILES.get('profile_image')   
-            id_image_front = request.FILES.get('id_image_front') 
-            id_image_back = request.FILES.get('id_image_back')             
+            profile_image = request.FILES.get('profile_image')
+            id_image_front = request.FILES.get('id_image_front')
+            id_image_back = request.FILES.get('id_image_back')
 
             if not username:
                 messages.error(request, "Username is required")
@@ -529,7 +541,7 @@ def Civilian_Profile_Registration(request):
 
             if not id_image_front:
                 messages.error(request, "Front ID image is required")
-                return redirect('Civilian_Profile_Registration')       
+                return redirect('Civilian_Profile_Registration')
 
             if not re.fullmatch(r'[a-zA-Z0-9_]{4,20}', username):
                 messages.error(request, "Username must be 4–20 characters and contain only letters, numbers, or underscore")
@@ -546,11 +558,10 @@ def Civilian_Profile_Registration(request):
             if User.objects.filter(email=email).exists():
                 messages.error(request, "Email already exists")
                 return redirect('Civilian_Profile_Registration')
-            
+
             if Authentication.objects.filter(mobile_number=mobile_number).exists():
                 messages.error(request, "Mobile number already exists")
                 return redirect('Civilian_Profile_Registration')
-
 
             pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$'
 
@@ -558,7 +569,7 @@ def Civilian_Profile_Registration(request):
                 messages.error(
                     request,
                     "Password must be at least 8 characters long, include uppercase, lowercase, a number, and a special character."
-                    )
+                )
                 return redirect('Civilian_Profile_Registration')
 
             if password != confirm_password:
@@ -572,27 +583,27 @@ def Civilian_Profile_Registration(request):
             if not re.fullmatch(r'[A-Za-z ]{2,50}', full_name):
                 messages.error(request, "Full name must contain only letters and spaces")
                 return redirect('Civilian_Profile_Registration')
-
             try:
-               
-                user = User.objects.create_user(
-                    username=username,
-                    password=password,
-                    email=email
-                )
 
-  
-                Authentication.objects.create(
-                    user=user,
-                    role='Civilian',
-                    full_name=full_name,
-                    mobile_number=mobile_number,
-                    profile_image=profile_image,
-                    civilian_id_card_name=civilian_id_card_name,
-                    id_image_front=id_image_front,
-                    id_image_back=id_image_back,
-                    status=True
-                )
+                with transaction.atomic():
+
+                    user = User.objects.create_user(
+                        username=username,
+                        password=password,
+                        email=email
+                    )
+
+                    Authentication.objects.create(
+                        user=user,
+                        role='Civilian',
+                        full_name=full_name,
+                        mobile_number=mobile_number,
+                        profile_image=profile_image,
+                        civilian_id_card_name=civilian_id_card_name,
+                        id_image_front=id_image_front,
+                        id_image_back=id_image_back,
+                        status=True
+                    )
 
                 messages.success(request, "Registration successful. Please login.")
                 return redirect('login')
@@ -606,8 +617,7 @@ def Civilian_Profile_Registration(request):
 
     except Exception as e:
         print("GLOBAL ERROR:", e)
-        return redirect('Error_Page')
-
+        return redirect('Error_Page')           
 
 @login_required
 def Civilian_Profile_Update(request):
@@ -692,37 +702,47 @@ def Civilian_Profile_Update(request):
                     messages.error(
                         request,
                         "Password must be at least 8 characters long, include uppercase, lowercase, a number, and a special character."
-                        )
+                    )
                     return redirect(redirect_url)
 
                 if user.check_password(password):
                     messages.error(request, "New password cannot be same as old password")
                     return redirect(redirect_url)
-
-                user.set_password(password)
-
             try:
 
-                user.username = username
-                user.email = email
-                user.save()
+                old_profile_image = auth.profile_image.name if auth.profile_image else None
+                remove_profile_image = request.POST.get("remove_profile_image") == "true"
 
-                auth.full_name = full_name
-                auth.mobile_number = mobile_number
+                with transaction.atomic():
 
-                # CASE 1: Replace image
-                if profile_image:
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
-                    auth.profile_image = profile_image
+                    user.username = username
+                    user.email = email
 
-                # CASE 2: Remove image
-                elif request.POST.get("remove_profile_image") == "true":
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
+                    if password:
+                        user.set_password(password)
+
+                    user.save()
+
+                    auth.full_name = full_name
+                    auth.mobile_number = mobile_number
+
+                    # CASE 1: Replace image
+                    if profile_image:
+                        auth.profile_image = profile_image
+
+                    # CASE 2: Remove image
+                    elif remove_profile_image:
                         auth.profile_image = None
 
-                auth.save()
+                    auth.save()
+
+                # Delete old image only after successful transaction
+                if profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
+
+                # Delete old image if removed
+                elif remove_profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
 
                 if password:
                     logout(request)
@@ -745,6 +765,7 @@ def Civilian_Profile_Update(request):
     except Exception as e:
         print("GLOBAL ERROR:", e)
         return redirect('Error_Page')
+    
 
 @login_required
 def Masteradmin_Police_Profile_Registration(request):
@@ -763,7 +784,7 @@ def Masteradmin_Police_Profile_Registration(request):
             profile_image = request.FILES.get('profile_image')
             id_image_front = request.FILES.get('id_image_front')
             id_image_back = request.FILES.get('id_image_back')
-     
+
             if not username:
                 messages.error(request, "Username is required")
                 return redirect('Masteradmin_Police_Profile_Registration')
@@ -787,7 +808,7 @@ def Masteradmin_Police_Profile_Registration(request):
             if not id_image_front:
                 messages.error(request, "Front ID image is required")
                 return redirect('Masteradmin_Police_Profile_Registration')
-      
+
             if not re.fullmatch(r'[a-zA-Z0-9_]{4,20}', username):
                 messages.error(request, "Invalid username format")
                 return redirect('Masteradmin_Police_Profile_Registration')
@@ -803,11 +824,11 @@ def Masteradmin_Police_Profile_Registration(request):
             if User.objects.filter(email=email).exists():
                 messages.error(request, "Email already exists")
                 return redirect('Masteradmin_Police_Profile_Registration')
-            
+
             if Authentication.objects.filter(mobile_number=mobile_number).exists():
                 messages.error(request, "Mobile number already exists")
                 return redirect('Masteradmin_Police_Profile_Registration')
-        
+
             if Authentication.objects.filter(police_id_number=police_id_number).exists():
                 messages.error(request, "Police ID already exists")
                 return redirect('Masteradmin_Police_Profile_Registration')
@@ -819,29 +840,29 @@ def Masteradmin_Police_Profile_Registration(request):
             if not re.fullmatch(r'[A-Za-z ]{2,50}', full_name):
                 messages.error(request, "Invalid name")
                 return redirect('Masteradmin_Police_Profile_Registration')
-
             try:
-           
-                user = User.objects.create_user(
-                    username=username,
-                    email=email
-                )
 
-                user.set_unusable_password()
-                user.save()
+                with transaction.atomic():
 
-             
-                Authentication.objects.create(
-                    user=user,
-                    role='Police',
-                    full_name=full_name,
-                    mobile_number=mobile_number,
-                    profile_image=profile_image,
-                    police_id_number=police_id_number,
-                    id_image_front=id_image_front,
-                    id_image_back=id_image_back,
-                    status=True
-                )
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email
+                    )
+
+                    user.set_unusable_password()
+                    user.save()
+
+                    Authentication.objects.create(
+                        user=user,
+                        role='Police',
+                        full_name=full_name,
+                        mobile_number=mobile_number,
+                        profile_image=profile_image,
+                        police_id_number=police_id_number,
+                        id_image_front=id_image_front,
+                        id_image_back=id_image_back,
+                        status=True
+                    )
 
                 messages.success(
                     request,
@@ -859,6 +880,7 @@ def Masteradmin_Police_Profile_Registration(request):
     except Exception as e:
         print("GLOBAL ERROR:", e)
         return redirect('Error_Page')
+    
 
 @login_required
 def Masteradmin_Police_Profile_Update(request, id):
@@ -940,7 +962,7 @@ def Masteradmin_Police_Profile_Update(request, id):
                 if password != confirm_password:
                     messages.error(request, "Passwords do not match")
                     return back()
-                
+
                 pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$'
 
                 if not re.match(pattern, password):
@@ -953,36 +975,45 @@ def Masteradmin_Police_Profile_Update(request, id):
                 if user.check_password(password):
                     messages.error(request, "New password cannot be same as old password")
                     return back()
-
-                user.set_password(password)
-
             try:
 
-                user.username = username
-                user.email = email
-                user.save()
+                old_profile_image = auth.profile_image.name if auth.profile_image else None
 
-                auth.full_name = full_name
-                auth.mobile_number = mobile_number
+                with transaction.atomic():
 
-                if status == "Active":
-                    auth.status = True
-                elif status == "Inactive":
-                    auth.status = False
+                    user.username = username
+                    user.email = email
 
-                # CASE 1: Replace image
-                if profile_image:
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
-                    auth.profile_image = profile_image
+                    if password:
+                        user.set_password(password)
 
-                # CASE 2: Remove image
-                elif request.POST.get("remove_profile_image") == "true":
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
+                    user.save()
+
+                    auth.full_name = full_name
+                    auth.mobile_number = mobile_number
+
+                    if status == "Active":
+                        auth.status = True
+                    elif status == "Inactive":
+                        auth.status = False
+
+                    # CASE 1: Replace image
+                    if profile_image:
+                        auth.profile_image = profile_image
+
+                    # CASE 2: Remove image
+                    elif request.POST.get("remove_profile_image") == "true":
                         auth.profile_image = None
 
-                auth.save()
+                    auth.save()
+
+                # Delete old image only after successful transaction
+                if profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
+
+                # Delete old image if removed
+                elif request.POST.get("remove_profile_image") == "true" and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
 
                 if password:
                     messages.success(request, "Password updated successfully")
@@ -1093,33 +1124,40 @@ def Police_Profile_Update(request):
                 if user.check_password(password):
                     messages.error(request, "New password cannot be same as old password")
                     return redirect(redirect_url)
-
             try:
 
-                user.username = username
-                user.email = email
+                old_profile_image = auth.profile_image.name if auth.profile_image else None
 
-                if password:
-                    user.set_password(password)
+                with transaction.atomic():
 
-                user.save()
+                    user.username = username
+                    user.email = email
 
-                auth.full_name = full_name
-                auth.mobile_number = mobile_number
+                    if password:
+                        user.set_password(password)
 
-                # CASE 1: Replace image    
-                if profile_image:
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
-                    auth.profile_image = profile_image
+                    user.save()
 
-                # CASE 2: Remove image
-                elif request.POST.get("remove_profile_image") == "true":
-                    if auth.profile_image:
-                        auth.profile_image.delete(save=False)
+                    auth.full_name = full_name
+                    auth.mobile_number = mobile_number
+
+                    # CASE 1: Replace image
+                    if profile_image:
+                        auth.profile_image = profile_image
+
+                    # CASE 2: Remove image
+                    elif request.POST.get("remove_profile_image") == "true":
                         auth.profile_image = None
 
-                auth.save()
+                    auth.save()
+
+                # Delete old image only after successful transaction
+                if profile_image and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
+
+                # Delete old image if removed
+                elif request.POST.get("remove_profile_image") == "true" and old_profile_image:
+                    auth.profile_image.storage.delete(old_profile_image)
 
                 if password:
                     logout(request)
@@ -1143,7 +1181,7 @@ def Police_Profile_Update(request):
         print("GLOBAL ERROR:", e)
         messages.error(request, "Something went wrong. Please try again.")
         return redirect('Error_Page')
-
+    
 @login_required 
 def Delete_User_Profile(request, id):
 
